@@ -35,15 +35,17 @@ public class SnowflakeId {
     }
 
     public static SnowflakeId getInstance(Long epoch) {
-        if (instance == null) {
+        SnowflakeId localRef = instance;
+        if (localRef == null) {
             synchronized (SnowflakeId.class) {
-                if (instance == null) {
+                localRef = instance;
+                if (localRef == null) {
                     long finalEpoch = epoch == null ? DEFAULT_EPOCH : epoch;
-                    instance = new SnowflakeId(finalEpoch);
+                    instance = localRef = new SnowflakeId(finalEpoch);
                 }
             }
         }
-        return instance;
+        return localRef;
     }
 
     public long nextId() {
