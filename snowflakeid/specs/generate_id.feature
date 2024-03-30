@@ -22,7 +22,7 @@ Feature: A new distributed ID can be generated
 
       Examples:
         | datetime                | machineId | previousSequenceNumber | newDistributedId    | newSequenceNumber |
-        | 2025-10-04T00:00:00     | 123       | NULL                   | 503808              | 0                 |
-        | 2037-05-28T14:24:45.448 | 378       | NULL                   | 1541815603606036480 | 0                 |
+        | 2025-10-04T00:00:00     | 123       | 0                      | 503809              | 1                 |
         | 2037-05-28T14:24:45.448 | 378       | 0                      | 1541815603606036481 | 1                 |
         | 2037-05-28T14:24:45.448 | 378       | 1                      | 1541815603606036482 | 2                 |
+        | 2037-05-28T14:24:45.448 | 378       | 2                      | 1541815603606036483 | 3                 |

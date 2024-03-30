@@ -2,42 +2,43 @@ package snowflakeid;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SnowflakeId {
     private static volatile SnowflakeId instance;
+    private static final long DEFAULT_EPOCH = 1759536000000L;
+    private static final int MACHINE_ID_BITS = 10;
+    private static final int SEQUENCE_BITS = 12;
+    private static final int MAX_MACHINE_ID = ~(-1 << MACHINE_ID_BITS);
+    private static final int MACHINE_ID_SHIFT = SEQUENCE_BITS;
+    private static final int TIMESTAMP_LEFT_SHIFT = SEQUENCE_BITS + MACHINE_ID_BITS;
+    private static final int SEQUENCE_MASK = ~(-1 << SEQUENCE_BITS);
 
-    private static final long defaultEpoch = 1759536000000L;
-    private static final long machineIdBits = 10L;
-    private static final long sequenceBits = 12L;
+    private Clock clock;
+    private int machineId;
 
-    private static final long maxMachineId = ~(-1L << machineIdBits);
-
-    private long machineId = getMachineId();
-    private static final long machineIdShift = sequenceBits;
-    private static final long timestampLeftShift = sequenceBits + machineIdBits;
-    private static final long sequenceMask = ~(-1L << sequenceBits);
-
-    private Clock clock = Clock.systemUTC();
-
-    private volatile long lastTimestamp = -1L;
     private long epoch;
-    private AtomicLong sequence = new AtomicLong(0);
+    private AtomicLong lastTsBasedSequence;
 
     private SnowflakeId(long epoch) {
         this.epoch = epoch;
+        this.machineId = getMachineId();
+        this.lastTsBasedSequence = new AtomicLong(0);
+        this.clock = Clock.systemUTC();
+    }
+
+    public long getEpoch() {
+        return epoch;
     }
 
     public static SnowflakeId getInstance(Long epoch) {
         if (instance == null) {
             synchronized (SnowflakeId.class) {
                 if (instance == null) {
-                    long finalEpoch = epoch == null ? defaultEpoch : epoch;
+                    long finalEpoch = epoch == null ? DEFAULT_EPOCH : epoch;
                     instance = new SnowflakeId(finalEpoch);
                 }
             }
@@ -46,37 +47,26 @@ public class SnowflakeId {
     }
 
     public long nextId() {
-        long timestamp = timeGen();
+        long now = getCurrentTimestamp();
+        long delta = now - epoch;
+        long lastDelta = lastTsBasedSequence.get() >> SEQUENCE_BITS;
 
-        if (timestamp < lastTimestamp) {
-            throw new RuntimeException(String.format("Clock moved backwards. Refusing to generate ID for %d milliseconds", lastTimestamp - timestamp));
+        if (delta < lastDelta) {
+            throw new RuntimeException(String.format("Clock moved backwards. Refusing to generate ID for %d milliseconds", lastDelta - now));
         }
-
-        if (lastTimestamp == timestamp) {
-            sequence.set((sequence.get() + 1) & sequenceMask);
-            if (sequence.get() == 0) {
-                timestamp = tilNextMillis(lastTimestamp);
-            }
+        long curr;
+        if (lastDelta == delta) {
+            curr = lastTsBasedSequence.incrementAndGet();
         } else {
-            sequence.set(0);
+            curr = lastTsBasedSequence.accumulateAndGet(delta << SEQUENCE_BITS, (p, c) -> c);
         }
 
-        lastTimestamp = timestamp;
-
-        return ((timestamp - epoch) << timestampLeftShift) |
-                (machineId << machineIdShift) |
-                sequence.get();
+        return (delta << TIMESTAMP_LEFT_SHIFT) |
+                (machineId << MACHINE_ID_SHIFT) |
+                curr & SEQUENCE_MASK;
     }
 
-    private long tilNextMillis(long lastTimestamp) {
-        long timestamp = timeGen();
-        while (timestamp <= lastTimestamp) {
-            timestamp = timeGen();
-        }
-        return timestamp;
-    }
-
-    private long timeGen() {
+    private long getCurrentTimestamp() {
         return Instant.now(clock).toEpochMilli();
     }
 
@@ -88,7 +78,7 @@ public class SnowflakeId {
         return result.toString();
     }
 
-    private static long getMachineId() {
+    private static int getMachineId() {
         try {
             // Get the MAC address
             InetAddress localHost = InetAddress.getLocalHost();
@@ -101,14 +91,10 @@ public class SnowflakeId {
             // Concatenate MAC address and process ID
             String combinedString = bytesToHex(macBytes) + processId;
 
-            // Compute hash value (SHA-256) of the concatenated string
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(combinedString.getBytes());
-
             // Extract a portion of the hash value to use as the machine ID
-            return Math.abs(hashBytes[0]);
+            return combinedString.hashCode() & MAX_MACHINE_ID;
         } catch (Exception e) {
-            return new Random().nextLong() & maxMachineId;
+            return new Random().nextInt() & MAX_MACHINE_ID;
         }
     }
 }
