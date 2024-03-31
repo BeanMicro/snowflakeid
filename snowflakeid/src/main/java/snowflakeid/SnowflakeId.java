@@ -47,9 +47,8 @@ public class SnowflakeId {
     }
 
     public long nextId() {
+        long lastTimestamp = lastTsBasedSequence.get() >> SEQUENCE_BITS;
         long now = getCurrentTimestamp();
-        long delta = now - epoch;
-        long lastDelta = lastTsBasedSequence.get() >> SEQUENCE_BITS;
 
         if (delta < lastDelta) {
             throw new RuntimeException(String.format("Clock moved backwards. Refusing to generate ID for %d milliseconds", lastDelta - now));
