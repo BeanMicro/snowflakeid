@@ -45,19 +45,23 @@ public class SnowflakeId {
         long lastTimestamp = lastTsBasedSequence.get() >> SEQUENCE_BITS;
         long now = getCurrentTimestamp();
 
-        if (delta < lastDelta) {
-            throw new RuntimeException(String.format("Clock moved backwards. Refusing to generate ID for %d milliseconds", lastDelta - now));
+        if (now < lastTimestamp) {
+            throw new RuntimeException(String.format("Clock moved backwards. Refusing to generate ID for %d milliseconds", lastTimestamp - now));
         }
-        long curr;
-        if (lastDelta == delta) {
-            curr = lastTsBasedSequence.incrementAndGet();
-        } else {
-            curr = lastTsBasedSequence.accumulateAndGet(delta << SEQUENCE_BITS, (p, c) -> c);
-        }
+        long curr = updateLastTimestampBasedSequenceAndGet(lastTimestamp, now);
 
-        return (delta << TIMESTAMP_LEFT_SHIFT) |
+        return (now << TIMESTAMP_LEFT_SHIFT) |
                 (machineId << MACHINE_ID_SHIFT) |
                 curr & SEQUENCE_MASK;
+    }
+
+    long updateLastTimestampBasedSequenceAndGet(long lastTimestamp, long currentTimestamp) {
+        return lastTsBasedSequence.accumulateAndGet(currentTimestamp << SEQUENCE_BITS, (p, c) -> {
+            if (lastTimestamp < currentTimestamp) {
+                return c;
+            }
+            return p + 1;
+        });
     }
 
     private long getCurrentTimestamp() {
