@@ -56,7 +56,7 @@ public class StepDefinitions {
     @When("a new distributed ID is generated")
     public void aNewDistributedIDIsGenerated() throws NoSuchFieldException, IllegalAccessException {
         System.out.println("WHEN New distributed ID is generated with machineId " + machineId);
-        SnowflakeId instance = SnowflakeId.getInstance(null);
+        SnowflakeId instance = SnowflakeId.getInstance();
         setMachineId(instance, machineId);
         Clock fixedClock = Clock.fixed(datetime.toInstant(ZoneOffset.UTC), ZoneId.of("UTC"));
         setClock(instance, fixedClock);

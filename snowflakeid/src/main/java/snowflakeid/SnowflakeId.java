@@ -8,23 +8,30 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SnowflakeId {
-    private static volatile SnowflakeId instance;
     private static final long DEFAULT_EPOCH = 1759536000000L;
-    private static final int MACHINE_ID_BITS = 10;
-    private static final int SEQUENCE_BITS = 12;
-    private static final int MAX_MACHINE_ID = ~(-1 << MACHINE_ID_BITS);
-    private static final int MACHINE_ID_SHIFT = SEQUENCE_BITS;
-    private static final int TIMESTAMP_LEFT_SHIFT = SEQUENCE_BITS + MACHINE_ID_BITS;
-    private static final int SEQUENCE_MASK = ~(-1 << SEQUENCE_BITS);
+    private static final byte MACHINE_ID_BITS = 10;
+    private static final byte SEQUENCE_BITS = 12;
+    private static final short MAX_MACHINE_ID = ~(-1 << MACHINE_ID_BITS);
+    private static final byte MACHINE_ID_SHIFT = SEQUENCE_BITS;
+    private static final byte TIMESTAMP_LEFT_SHIFT = SEQUENCE_BITS + MACHINE_ID_BITS;
+    private static final short SEQUENCE_MASK = ~(-1 << SEQUENCE_BITS);
 
     private Clock clock;
     private int machineId;
 
-    private long epoch;
+    protected long epoch;
     private AtomicLong lastTsBasedSequence;
 
-    private SnowflakeId(long epoch) {
-        this.epoch = epoch;
+    private static class SingletonHelper {
+        private static final SnowflakeId INSTANCE = new SnowflakeId();
+    }
+
+    public static SnowflakeId getInstance() {
+        return SingletonHelper.INSTANCE;
+    }
+
+    protected SnowflakeId() {
+        this.epoch = DEFAULT_EPOCH;
         this.machineId = getMachineId();
         this.lastTsBasedSequence = new AtomicLong(0);
         this.clock = Clock.systemUTC();
@@ -32,20 +39,6 @@ public class SnowflakeId {
 
     public long getEpoch() {
         return epoch;
-    }
-
-    public static SnowflakeId getInstance(Long epoch) {
-        SnowflakeId localRef = instance;
-        if (localRef == null) {
-            synchronized (SnowflakeId.class) {
-                localRef = instance;
-                if (localRef == null) {
-                    long finalEpoch = epoch == null ? DEFAULT_EPOCH : epoch;
-                    instance = localRef = new SnowflakeId(finalEpoch);
-                }
-            }
-        }
-        return localRef;
     }
 
     public long nextId() {
@@ -69,7 +62,7 @@ public class SnowflakeId {
     }
 
     private long getCurrentTimestamp() {
-        return Instant.now(clock).toEpochMilli();
+        return Instant.now(clock).toEpochMilli() - epoch;
     }
 
     private static String bytesToHex(byte[] bytes) {
