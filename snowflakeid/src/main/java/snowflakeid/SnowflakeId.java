@@ -57,7 +57,7 @@ public class SnowflakeId {
 
     long updateLastTimestampBasedSequenceAndGet(long lastTimestamp, long currentTimestamp) {
         return lastTsBasedSequence.accumulateAndGet(currentTimestamp << SEQUENCE_BITS, (p, c) -> {
-            if (lastTimestamp < currentTimestamp) {
+            if (p < c) {
                 return c;
             }
             return p + 1;
