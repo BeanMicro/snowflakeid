@@ -50,18 +50,21 @@ public class SnowflakeId {
         }
         long curr = updateLastTimestampBasedSequenceAndGet(lastTimestamp, now);
 
-        return (now << TIMESTAMP_LEFT_SHIFT) |
+        return ((curr >> SEQUENCE_BITS) << TIMESTAMP_LEFT_SHIFT) |
                 (machineId << MACHINE_ID_SHIFT) |
                 curr & SEQUENCE_MASK;
     }
 
     long updateLastTimestampBasedSequenceAndGet(long lastTimestamp, long currentTimestamp) {
-        return lastTsBasedSequence.accumulateAndGet(currentTimestamp << SEQUENCE_BITS, (p, c) -> {
-            if (p < c) { // To make sure that the current timestamp is still a more recent value
-                return c;
-            }
-            return p + 1;
-        });
+        if (lastTimestamp < currentTimestamp) {
+            return lastTsBasedSequence.accumulateAndGet(currentTimestamp << SEQUENCE_BITS, (p, c) -> {
+                if (p < c) { // To make sure that the current timestamp is still a more recent value
+                    return c;
+                }
+                return p + 1;
+            });
+        }
+        return lastTsBasedSequence.incrementAndGet();
     }
 
     private long getCurrentTimestamp() {
