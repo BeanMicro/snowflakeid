@@ -1,4 +1,4 @@
-package snowflakeid;
+package io.beandev.snowflakeid;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -16,11 +16,11 @@ public class SnowflakeId {
     private static final byte TIMESTAMP_LEFT_SHIFT = SEQUENCE_BITS + MACHINE_ID_BITS;
     private static final short SEQUENCE_MASK = ~(-1 << SEQUENCE_BITS);
 
-    private Clock clock;
-    private int machineId;
+    private final Clock clock;
+    private final int machineId;
 
     protected long epoch;
-    private AtomicLong lastTsBasedSequence;
+    private final AtomicLong lastTsBasedSequence;
 
     private static class SingletonHelper {
         private static final SnowflakeId INSTANCE = new SnowflakeId();
@@ -51,7 +51,7 @@ public class SnowflakeId {
         long curr = updateLastTimestampBasedSequenceAndGet(lastTimestamp, now);
 
         return ((curr >> SEQUENCE_BITS) << TIMESTAMP_LEFT_SHIFT) |
-                (machineId << MACHINE_ID_SHIFT) |
+                ((long) machineId << MACHINE_ID_SHIFT) |
                 curr & SEQUENCE_MASK;
     }
 

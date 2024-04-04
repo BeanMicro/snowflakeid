@@ -1,4 +1,4 @@
-package snowflakeid;
+package io.beandev.snowflakeid;
 
 import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;

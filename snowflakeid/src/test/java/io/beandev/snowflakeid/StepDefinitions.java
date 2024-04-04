@@ -1,4 +1,4 @@
-package snowflakeid;
+package io.beandev.snowflakeid;
 
 import io.cucumber.java.ParameterType;
 import io.cucumber.java.en.And;
