@@ -8,10 +8,12 @@
 plugins {
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
+    id 'signing'
+    id "com.vanniktech.maven.publish" version "0.28.0"
 }
 
 group = 'io.beandev.microframework'
-version = '0.1.0-SNAPSHOT'
+version = '0.1.0'
 
 repositories {
     // Use Maven Central for resolving dependencies.
@@ -50,6 +52,16 @@ java {
     }
 }
 
+task javadocJar(type: Jar) {
+    archiveClassifier = 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allSource
+}
+
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
@@ -72,4 +84,35 @@ test {
         events "passed", "skipped", "failed", "started"
         showStandardStreams = true
     }
+}
+
+import com.vanniktech.maven.publish.SonatypeHost
+
+mavenPublishing {
+  publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+  signAllPublications()
+
+  coordinates(group, "snowflakeid", version)
+
+  pom {
+    name = "snowflakeid"
+    url = "https://github.com/BeanMicro/snowflakeid/"
+    licenses {
+        license {
+            name = "MIT"
+            url = "https://opensource.org/licenses/MIT"
+        }
+    }
+    developers {
+        developer {
+            id = "peterbean410"
+            name = "Peter Bean"
+        }
+    }
+    scm {
+      url = "https://github.com/BeanMicro/snowflakeid"
+      connection = "scm:git:git://github.com/BeanMicro/snowflakeid.git"
+      developerConnection = "scm:git:ssh://git@github.com/BeanMicro/snowflakeid.git"
+    }
+  }
 }
